@@ -1,0 +1,12 @@
+# agent/ sub-project — local state ignored from version control.
+# The local secret environment file and keystore live under the workspace-root
+# .studio/ directory; the root ignore rules cover them. These patterns also
+# protect stray secret material under this sub-project.
+.studio/wallets/
+.studio/audit-log.jsonl
+.env.*
+!.env.example
+
+# Node (also caught by the workspace root gitignore; duplicated for clarity)
+node_modules/
+dist/

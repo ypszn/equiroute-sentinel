@@ -1,0 +1,52 @@
+# bnbagent-studio workspace defaults.
+# All agent secrets — the encrypted keystore AND the local secret environment
+# file — live HERE under .studio/ at the workspace root, OUTSIDE app/agent
+# (the deploy codeLocation), so no deploy packaging path can bundle them.
+# Never commit .studio/.
+.studio/
+.studio/wallets/
+
+# Local and generated environment/secret files.
+.env
+.env.*
+!.env.example
+agentcore/.env.*
+*.secret
+*.secrets
+*.pem
+*.key
+*.p12
+*.pfx
+
+# `bag dev --container` writes its local secret environment file (wallet material +
+# unlock password + provider/storage keys) into agentcore/.env.* so the dev
+# container can sign. The agentcore/ dir is otherwise committed, so ignore it.
+
+# Node and build output.
+node_modules/
+dist/
+app/agent/dist/
+app/agent/.cache/
+coverage/
+
+# Local captures, logs, temporary validation output, and deployment state.
+*.log
+logs/
+.tmp/
+tmp/
+*.capture
+*.har
+agentcore/.aws-sam/
+agentcore/cdk.out/
+
+# Editor / OS junk.
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Skills installed at workspace root (regeneratable via `bag skills install`).
+.claude/skills/
+
+# Cursor rules emitted at init (regeneratable via `bag skills install --target cursor`).
+.cursor/rules/
