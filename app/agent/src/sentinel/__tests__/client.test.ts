@@ -8,7 +8,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { loadEquiRouteConfig, LOCAL_DEV_BASE_URL } from "../config.js";
+import { loadEquiRouteConfig, CANONICAL_EQUIROUTE_BASE_URL } from "../config.js";
 import {
   ALLOWED_PATHS,
   assertAllowedPath,
@@ -23,7 +23,7 @@ import { startEquiRouteStub, unusedPort } from "./helpers.js";
 const intent = { ...NVDA_INTENT };
 
 function clientFor(baseUrl: string, timeoutMs = 5000): HttpEquiRouteClient {
-  return new HttpEquiRouteClient({ config: { baseUrl, timeoutMs, headers: {} } });
+  return new HttpEquiRouteClient({ config: { baseUrl, timeoutMs, headers: {}, source: "environment" } });
 }
 
 // ── 3. EquiRoute unreachable ────────────────────────────────────────────────
@@ -236,7 +236,7 @@ test("only route discovery and policy evaluation are reachable", async () => {
 test("no wallet address is ever sent to EquiRoute", async () => {
   const bodies: string[] = [];
   const client = new HttpEquiRouteClient({
-    config: { baseUrl: "http://equiroute.test", timeoutMs: 1000, headers: {} },
+    config: { baseUrl: "http://equiroute.test", timeoutMs: 1000, headers: {}, source: "environment" },
     fetchImpl: async (_url, init) => {
       bodies.push(init.body);
       return {
@@ -259,25 +259,19 @@ test("no wallet address is ever sent to EquiRoute", async () => {
 
 // ── configuration ───────────────────────────────────────────────────────────
 
-test("EQUIROUTE_BASE_URL drives the client; localhost is local-dev only", () => {
-  assert.equal(
-    loadEquiRouteConfig({ EQUIROUTE_BASE_URL: "https://equiroute.example/" }).baseUrl,
-    "https://equiroute.example",
-  );
+test("unset EquiRoute URL uses the canonical public deployment", () => {
+  const config = loadEquiRouteConfig({});
+  assert.equal(config.baseUrl, CANONICAL_EQUIROUTE_BASE_URL);
+  assert.equal(config.source, "canonical_default");
+});
 
-  // Local dev: no deployed-runtime markers → the localhost default applies.
-  assert.equal(loadEquiRouteConfig({}).baseUrl, LOCAL_DEV_BASE_URL);
+test("explicit EquiRoute URL overrides the canonical default", () => {
+  const config = loadEquiRouteConfig({ EQUIROUTE_BASE_URL: "https://equiroute.example/" });
+  assert.equal(config.baseUrl, "https://equiroute.example");
+  assert.equal(config.source, "environment");
+});
 
-  // Deployed runtime with no base URL must fail loudly, not guess localhost.
-  assert.throws(
-    () => loadEquiRouteConfig({ AGENTCORE_RUNTIME_URL: "https://runtime.aws" }),
-    /EQUIROUTE_BASE_URL is not set/,
-  );
-  assert.throws(
-    () => loadEquiRouteConfig({ BNBAGENT_RUNTIME_SECRET_ID: "secret" }),
-    /EQUIROUTE_BASE_URL is not set/,
-  );
-
+test("EQUIROUTE_BASE_URL validates HTTPS and rejects unsafe deployed overrides", () => {
   assert.throws(
     () => loadEquiRouteConfig({ EQUIROUTE_BASE_URL: "http://localhost:3000", NODE_ENV: "production" }),
     /must use HTTPS/,
@@ -286,16 +280,20 @@ test("EQUIROUTE_BASE_URL drives the client; localhost is local-dev only", () => 
     () => loadEquiRouteConfig({ EQUIROUTE_BASE_URL: "https://localhost:3000", AGENTCORE_RUNTIME_URL: "https://runtime.example" }),
     /must not target localhost/,
   );
+  assert.throws(
+    () => loadEquiRouteConfig({ EQUIROUTE_BASE_URL: "https://user:pass@equiroute.example", NODE_ENV: "production" }),
+    /must not contain userinfo/,
+  );
 });
 
 test("deployment EquiRoute dependency health validates configuration without routing", async () => {
   const { equiRouteDependencyStatus } = await import("../dependencyHealth.js");
-  const ready = equiRouteDependencyStatus({ EQUIROUTE_BASE_URL: "https://equiroute.example", NODE_ENV: "production" });
+  const ready = equiRouteDependencyStatus({ NODE_ENV: "production" });
   assert.equal(ready.configured, true);
   assert.equal(ready.reachable, null);
+  assert.equal(ready.baseUrl, CANONICAL_EQUIROUTE_BASE_URL);
   assert.equal(ready.routeEndpointReady, "not_checked");
   assert.equal(ready.policyEndpointReady, "not_checked");
-  assert.equal(equiRouteDependencyStatus({ EQUIROUTE_BASE_URL: "http://localhost:3000", NODE_ENV: "production" }).reachable, false);
 });
 
 test("local localhost remains valid for local development", () => {
@@ -318,6 +316,7 @@ test("configured quote-context address is sent to both read-only EquiRoute passe
       baseUrl: "http://equiroute.test",
       timeoutMs: 1000,
       headers: {},
+      source: "environment",
       quoteContextAddress: address,
     },
     fetchImpl: async (url, init) => {
@@ -373,6 +372,7 @@ test("quote-context address is never accepted from the Sentinel request", async 
       baseUrl: "http://equiroute.test",
       timeoutMs: 1000,
       headers: {},
+      source: "environment",
       quoteContextAddress: "0x30B146dF82aDB5e32155ea1bA94d016bf95bF2D5",
     },
     fetchImpl: async (_url, init) => {

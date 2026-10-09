@@ -1,16 +1,11 @@
 /**
  * EquiRoute connection configuration — server-side env only.
  *
- * `EQUIROUTE_BASE_URL` is the ONE knob that points the Sentinel at an
- * EquiRoute deployment. It is read from the process environment at call time
- * (not cached at import) so `bag dev` / the deployed runtime secret bundle can
- * set it before the first request.
- *
- * Localhost is a LOCAL-DEV convenience only: the fallback applies when the
- * process is demonstrably not a deployed runtime (no AgentCore runtime URL and
- * no managed secret bundle). A deployed runtime with no `EQUIROUTE_BASE_URL`
- * fails loudly instead of silently analysing a localhost that does not exist —
- * the Sentinel must never fabricate an opportunity.
+ * `EQUIROUTE_BASE_URL` optionally overrides the canonical public EquiRoute
+ * endpoint. It is read from the process environment at call time, so local
+ * development and managed runtimes can point to a different trusted service.
+ * When no override is set, the canonical hackathon deployment is used; there
+ * is no implicit localhost fallback.
  *
  * `EQUIROUTE_QUOTE_WALLET_ADDRESS` is a PUBLIC EVM address used ONLY as
  * read-only quote context: some EquiRoute representations price through an RFQ
@@ -33,8 +28,8 @@
  * without restructuring the client: when unset, NO auth header is sent.
  */
 
-/** Local-dev default; never used when the process looks like a deployed runtime. */
-export const LOCAL_DEV_BASE_URL = "http://localhost:3000";
+/** Canonical public EquiRoute deployment; runtime overrides remain supported. */
+export const CANONICAL_EQUIROUTE_BASE_URL = "https://equiroute-lime.vercel.app";
 
 /** Default per-request ceiling. EquiRoute fans out 3 quotes + market status. */
 export const DEFAULT_TIMEOUT_MS = 20_000;
@@ -46,6 +41,8 @@ const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 export interface EquiRouteConfig {
   readonly baseUrl: string;
   readonly timeoutMs: number;
+  /** Where the effective base URL came from; contains no secret material. */
+  readonly source: "environment" | "canonical_default";
   /** Extra headers to send (auth seam). Empty when no token is configured. */
   readonly headers: Readonly<Record<string, string>>;
   /**
@@ -195,23 +192,11 @@ export function loadEquiRouteConfig(
   const quoteContextAddress = resolveQuoteContextAddress(env);
   const deployed = isDeployedRuntime(env);
   const raw = (env.EQUIROUTE_BASE_URL ?? "").trim();
-  if (raw === "") {
-    if (isDeployedRuntime(env)) {
-      throw new EquiRouteConfigError(
-        "EQUIROUTE_BASE_URL is not set. The Sentinel has no EquiRoute " +
-          "endpoint to analyse against and will not guess one in a deployed " +
-          "runtime. Set EQUIROUTE_BASE_URL in the runtime environment.",
-      );
-    }
-    return {
-      baseUrl: LOCAL_DEV_BASE_URL,
-      timeoutMs: positiveInt(env.EQUIROUTE_TIMEOUT_MS, DEFAULT_TIMEOUT_MS),
-      headers: authHeaders(env),
-      quoteContextAddress,
-    };
-  }
+  const source = raw === "" ? "canonical_default" : "environment";
+  const effectiveRaw = raw === "" ? CANONICAL_EQUIROUTE_BASE_URL : raw;
   return {
-    baseUrl: normaliseBaseUrl(raw, deployed),
+    baseUrl: normaliseBaseUrl(effectiveRaw, deployed),
+    source,
     timeoutMs: positiveInt(env.EQUIROUTE_TIMEOUT_MS, DEFAULT_TIMEOUT_MS),
     headers: authHeaders(env),
     quoteContextAddress,

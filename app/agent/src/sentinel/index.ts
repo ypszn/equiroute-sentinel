@@ -26,9 +26,9 @@ export {
 
 
 export {
+  CANONICAL_EQUIROUTE_BASE_URL,
   DEFAULT_TIMEOUT_MS,
   EquiRouteConfigError,
-  LOCAL_DEV_BASE_URL,
   loadEquiRouteConfig,
   type EquiRouteConfig,
 } from "./config.js";

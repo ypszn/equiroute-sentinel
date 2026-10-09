@@ -28,6 +28,7 @@ destination = "platform"
 # Artifact channel: 'zip' (evm-local default — managed runtime, no Docker)
 # or 'container' (local Docker build → brokered ECR; forced for twak).
 platform_artifact = "zip"
+packaging = "zip"
 
 [wallet]
 # Local keystore signer. The Agent is the SOLE key-holder/signer.
@@ -38,6 +39,7 @@ signer = "local"
 keystore_dir = "../../.studio/wallets"
 # address = "0x..."   # filled by `bag wallet new`
 address = "0x30B146dF82aDB5e32155ea1bA94d016bf95bF2D5"
+platform_exposed_addresses = ["0x30B146dF82aDB5e32155ea1bA94d016bf95bF2D5"]
 
 [llm]
 provider = "pieverse-llm"
@@ -114,3 +116,17 @@ acknowledged_at = "2026-10-08T11:40:24Z"
 max_per_topup_usd = 1.0
 max_per_day_usd = 3.0
 max_per_month_usd = 15.0
+
+[deploy.platform]
+terms_accepted_at = "2026-10-09T16:08:23Z"
+slug = "equiroutesentinel"
+deployment_id = "01M4GPS74P07R4143PTJ7DJRFG"
+backend = "aws"
+agent_id = "01M4GPS74PTF04C3PVDSMB0JKR"
+invoke_url = "https://bnbagent-api.bnbchain.world/v1/rt/01M4GPS74PTF04C3PVDSMB0JKR/.well-known/agent-card.json"
+last_deploy_at = "2026-10-09T16:09:26Z"
+
+[identity]
+endpoint = "https://bnbagent-api.bnbchain.world/v1/rt/01M4GPS74PTF04C3PVDSMB0JKR/.well-known/agent-card.json"
+registered_at = "2026-10-09T16:10:23.481Z"
+agent_id = 2582

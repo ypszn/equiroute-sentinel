@@ -156,13 +156,19 @@ BNB Agent Studio can register/reconcile the deployed agent identity on BSC testn
 
 ## Public EquiRoute Dependency
 
-Configure the server-side base URL with:
+Sentinel defaults to the canonical public EquiRoute deployment used by the hackathon:
+
+```text
+https://equiroute-lime.vercel.app
+```
+
+`EQUIROUTE_BASE_URL` remains a runtime override when a different trusted EquiRoute deployment is required:
 
 ```text
 EQUIROUTE_BASE_URL=https://equiroute-lime.vercel.app
 ```
 
-Deployed/production mode requires an HTTPS URL and rejects localhost/loopback. Local development may use `http://localhost:3000`. If the public EquiRoute dependency is missing, misconfigured, unreachable, or returns invalid data, Sentinel fails closed and does not fabricate a route, policy result, or watch match.
+Deployed/production mode requires an HTTPS URL and rejects localhost/loopback. Local development may override it with a local EquiRoute URL such as `http://localhost:3000`. If the EquiRoute dependency is missing, misconfigured, unreachable, or returns invalid data, Sentinel fails closed and does not fabricate a route, policy result, or watch match.
 
 The health/readiness helper validates configuration without issuing a market-routing request. Endpoint readiness remains unknown until a real validated Sentinel request; generic health checks do not trigger market/RFQ provider calls.
 
