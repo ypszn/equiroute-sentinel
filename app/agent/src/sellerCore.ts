@@ -40,6 +40,7 @@
 import { ERC8183JobOps } from "@bnbagent/sdk/erc8183";
 import { maskUrlSecrets } from "@bnbagent/studio-runtime/audit";
 import { SubmitPermanentlyUnsupportedError } from "@bnbagent/studio-runtime/erc8183";
+import { loadStudioToml } from "@bnbagent/studio-runtime/config";
 import { getWallet } from "@bnbagent/studio-runtime/wallet";
 import {
   DeliveryTimeoutError,

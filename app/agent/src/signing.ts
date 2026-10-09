@@ -28,7 +28,10 @@ import {
   type NegotiationResult,
   type QuoteSigner,
 } from "@bnbagent/sdk/erc8183";
-import type { AssetId } from "@bnbagent/sdk/networks";
+import {
+  getAsset,
+  type AssetId,
+} from "@bnbagent/sdk/networks";
 import {
   type TomlTable,
   loadStudioToml,
@@ -43,10 +46,8 @@ import {
   verifySignedJob as verifySignedJobCore,
 } from "@bnbagent/studio-runtime/erc8183";
 import { usdPriceToAtomic } from "@bnbagent/studio-runtime/networks";
-import {
-  type ResolvedSellerPolicy,
-  resolveSellerPolicy,
-} from "@bnbagent/studio-runtime/policy";
+import type { ResolvedSellerPolicy } from "@bnbagent/studio-runtime/policy";
+import { resolveSellerPolicy } from "@bnbagent/studio-runtime/policy";
 import { getWallet } from "@bnbagent/studio-runtime/wallet";
 
 const MAX_UINT256 = (1n << 256n) - 1n;
@@ -244,7 +245,7 @@ function requireMultiAssetClient(
   return client as MultiAssetClient;
 }
 
-function handlerPlan(
+export function handlerPlan(
   cfg: TomlTable,
   resolved: ResolvedSellerPolicy,
 ): HandlerPlan {
@@ -385,6 +386,30 @@ async function getHandler(plan: HandlerPlan): Promise<NegotiationHandlerLike> {
  * `verifying_contract`; on reject it carries `response.reason_code` /
  * `reason` (empty hash + sig). We do NOT invent a custom shape.
  */
+export function canonicalizeQuoteRequest(
+  request: Record<string, unknown>,
+  plan: HandlerPlan,
+): Record<string, unknown> {
+  const termsValue = request.terms;
+  const terms: Record<string, unknown> =
+    termsValue !== null && typeof termsValue === "object" && !Array.isArray(termsValue)
+      ? { ...(termsValue as Record<string, unknown>) }
+      : {};
+
+  if (terms.currency === undefined) {
+    if (plan.source === "canonical") {
+      const requestedAsset =
+        typeof terms.asset === "string"
+          ? terms.asset
+          : Object.keys(plan.servicePrices ?? {})[0] ?? "TEST_U";
+      terms.currency = getAsset(plan.chainId, requestedAsset).address;
+    } else if (plan.currency !== "") {
+      terms.currency = plan.currency;
+    }
+  }
+  return { ...request, terms };
+}
+
 export async function signQuote(
   request: Record<string, unknown>,
   clampedPriceWei?: bigint,
@@ -404,9 +429,10 @@ export async function signQuote(
     clampPrice(legacyPriceWei);
   }
 
+  const normalizedRequest = canonicalizeQuoteRequest(request, plan);
   const activeHandler = await getHandler(plan);
   const result = await activeHandler.negotiate(
-    request,
+    normalizedRequest,
     plan.source === "canonical"
       ? { estimatedCompletionSeconds: plan.estimatedCompletionSeconds }
       : {
