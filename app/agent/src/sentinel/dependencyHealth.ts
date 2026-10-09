@@ -31,14 +31,14 @@ export function equiRouteDependencyStatus(
         env.STUDIO_DEPLOYED_RUNTIME === "true",
     );
     return {
-      configured: env.EQUIROUTE_BASE_URL !== undefined && env.EQUIROUTE_BASE_URL.trim() !== "",
+      configured: true,
       reachable: null,
       baseUrl: config.baseUrl,
       routeEndpointReady: "not_checked",
       policyEndpointReady: "not_checked",
       reason: deployed
-        ? "Configuration validated. Reachability and endpoint readiness are checked by the next validated Sentinel request; no routing probe was issued."
-        : "Local configuration validated. No market-routing probe was issued.",
+        ? `Configuration validated from ${config.source}. Reachability and endpoint readiness are checked by the next validated Sentinel request; no routing probe was issued.`
+        : `Configuration validated from ${config.source}. No market-routing probe was issued.`,
     };
   } catch (error) {
     const reason = error instanceof EquiRouteConfigError || error instanceof Error

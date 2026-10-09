@@ -27,6 +27,7 @@ export {
 
 export {
   CANONICAL_EQUIROUTE_BASE_URL,
+  CANONICAL_QUOTE_CONTEXT_ADDRESS,
   DEFAULT_TIMEOUT_MS,
   EquiRouteConfigError,
   loadEquiRouteConfig,

@@ -216,7 +216,7 @@ function baseReport(): SentinelReport {
       },
      ],
     quoteContext: {
-      addressUsed: null,
+      addressUsed: "0x30B146dF82aDB5e32155ea1bA94d016bf95bF2D5",
       purpose: "read_only_quote_context",
       executionAuthority: false,
     },

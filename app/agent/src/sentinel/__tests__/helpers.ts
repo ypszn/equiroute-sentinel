@@ -8,6 +8,7 @@
 
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
+import { CANONICAL_QUOTE_CONTEXT_ADDRESS } from "../config.js";
 import type { EquiRouteClient } from "../equirouteClient.js";
 import type { PolicyInput, PolicyResult, RouteResult, SentinelIntent } from "../types.js";
 
@@ -98,7 +99,10 @@ export function fakeClient(options: FakeClientOptions): FakeClient {
   return {
     routeCalls,
     policyCalls,
-    quoteContextAddress: () => options.quoteContextAddress ?? null,
+    quoteContextAddress: () =>
+      options.quoteContextAddress === undefined
+        ? CANONICAL_QUOTE_CONTEXT_ADDRESS
+        : options.quoteContextAddress,
     async getRoute(input) {
       routeCalls.push(input);
       if (options.routeError) throw options.routeError;

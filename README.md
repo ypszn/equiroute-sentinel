@@ -152,7 +152,7 @@ BNB Agent Studio can register/reconcile the deployed agent identity on BSC testn
 
 ## Quote Context
 
-`EQUIROUTE_QUOTE_WALLET_ADDRESS` is a public EVM address used only as read-only RFQ quote context when EquiRoute needs an address to produce a quote. It is **not** an execution wallet, signer, Binance Agentic Wallet identity, or execution authorization. The value is server-side configuration, not accepted from a caller request.
+`EQUIROUTE_QUOTE_WALLET_ADDRESS` is a public EVM address used only as read-only RFQ quote context when EquiRoute needs an address to produce a quote. If it is unset, Sentinel uses the known public Studio address for the hackathon. It is **not** an execution wallet, signer, Binance Agentic Wallet identity, or execution authorization. The value is server-side configuration, not accepted from a caller request.
 
 ## Public EquiRoute Dependency
 

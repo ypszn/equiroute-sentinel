@@ -12,6 +12,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { EquiRouteError } from "../equirouteClient.js";
+import { CANONICAL_QUOTE_CONTEXT_ADDRESS } from "../config.js";
 import { createSentinelRunner } from "../runner.js";
 import { validateSentinelIntent } from "../intent.js";
 import type { SentinelReport } from "../types.js";
@@ -67,7 +68,7 @@ test("1. a valid NVDA intent produces a complete structured report", async () =>
   assert.equal(report.selectedRepresentation?.symbol, "NVDAB");
   assert.equal(report.policy.outcome, "confirmation_required");
   assert.equal(report.opportunity.status, "needs_confirmation");
-  assert.equal(report.quoteContext.addressUsed, null);
+  assert.equal(report.quoteContext.addressUsed, "0x30B146dF82aDB5e32155ea1bA94d016bf95bF2D5");
   assert.equal(report.quoteContext.purpose, "read_only_quote_context");
   assert.equal(report.quoteContext.executionAuthority, false);
   assert.equal(report.comparison.status, "degraded");
@@ -558,7 +559,7 @@ test("the passes are called sequentially, not concurrently", async () => {
     client: {
       getRoute: () => track("route", routeFixture()),
       evaluatePolicy: () => track("policy", policyFixture()),
-      quoteContextAddress: () => null,
+      quoteContextAddress: () => CANONICAL_QUOTE_CONTEXT_ADDRESS,
     },
     model: null,
     clock: fixedClock,

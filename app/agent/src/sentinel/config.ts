@@ -31,6 +31,10 @@
 /** Canonical public EquiRoute deployment; runtime overrides remain supported. */
 export const CANONICAL_EQUIROUTE_BASE_URL = "https://equiroute-lime.vercel.app";
 
+/** Canonical public Studio address used only as read-only RFQ quote context. */
+export const CANONICAL_QUOTE_CONTEXT_ADDRESS =
+  "0x30B146dF82aDB5e32155ea1bA94d016bf95bF2D5";
+
 /** Default per-request ceiling. EquiRoute fans out 3 quotes + market status. */
 export const DEFAULT_TIMEOUT_MS = 20_000;
 
@@ -51,7 +55,7 @@ export interface EquiRouteConfig {
    * case RFQ representations are reported as
    * `QUOTE_CONTEXT_ADDRESS_REQUIRED` rather than as economically worse.
    */
-  readonly quoteContextAddress?: string | null;
+  readonly quoteContextAddress: string;
 }
 
 export class EquiRouteConfigError extends Error {
@@ -159,11 +163,13 @@ function authHeaders(env: NodeJS.ProcessEnv): Record<string, string> {
  * material is refused loudly, and no rejected value is ever echoed into the
  * error message (so a mis-pasted secret cannot leak into logs or a report).
  */
-function resolveQuoteContextAddress(env: NodeJS.ProcessEnv): string | null {
+function resolveQuoteContextAddress(env: NodeJS.ProcessEnv): string {
   const raw = (env.EQUIROUTE_QUOTE_WALLET_ADDRESS ?? "").trim();
-  if (raw === "") return null;
+  const effective = raw === "" ? CANONICAL_QUOTE_CONTEXT_ADDRESS : raw;
 
-  const hex = raw.startsWith("0x") || raw.startsWith("0X") ? raw.slice(2) : raw;
+  const hex = effective.startsWith("0x") || effective.startsWith("0X")
+    ? effective.slice(2)
+    : effective;
   if (/^[0-9a-fA-F]{64}$/u.test(hex)) {
     throw new EquiRouteConfigError(
       "EQUIROUTE_QUOTE_WALLET_ADDRESS looks like a 32-byte private key, not a " +
@@ -171,18 +177,18 @@ function resolveQuoteContextAddress(env: NodeJS.ProcessEnv): string | null {
         "quote context and must never be given key material. Value not echoed.",
     );
   }
-  if (!EVM_ADDRESS.test(raw)) {
+  if (!EVM_ADDRESS.test(effective)) {
     throw new EquiRouteConfigError(
       "EQUIROUTE_QUOTE_WALLET_ADDRESS must be a 0x-prefixed 20-byte public EVM " +
         "address. Value not echoed.",
     );
   }
-  if (raw.toLowerCase() === ZERO_ADDRESS) {
+  if (effective.toLowerCase() === ZERO_ADDRESS) {
     throw new EquiRouteConfigError(
       "EQUIROUTE_QUOTE_WALLET_ADDRESS must not be the zero address.",
     );
   }
-  return raw;
+  return effective;
 }
 
 /** Resolve the EquiRoute connection config, or throw {@link EquiRouteConfigError}. */

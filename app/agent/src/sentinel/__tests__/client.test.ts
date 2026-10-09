@@ -8,7 +8,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { loadEquiRouteConfig, CANONICAL_EQUIROUTE_BASE_URL } from "../config.js";
+import { loadEquiRouteConfig, CANONICAL_EQUIROUTE_BASE_URL, CANONICAL_QUOTE_CONTEXT_ADDRESS } from "../config.js";
 import {
   ALLOWED_PATHS,
   assertAllowedPath,
@@ -23,7 +23,7 @@ import { startEquiRouteStub, unusedPort } from "./helpers.js";
 const intent = { ...NVDA_INTENT };
 
 function clientFor(baseUrl: string, timeoutMs = 5000): HttpEquiRouteClient {
-  return new HttpEquiRouteClient({ config: { baseUrl, timeoutMs, headers: {}, source: "environment" } });
+  return new HttpEquiRouteClient({ config: { baseUrl, timeoutMs, headers: {}, source: "environment", quoteContextAddress: CANONICAL_QUOTE_CONTEXT_ADDRESS } });
 }
 
 // ── 3. EquiRoute unreachable ────────────────────────────────────────────────
@@ -236,7 +236,7 @@ test("only route discovery and policy evaluation are reachable", async () => {
 test("no wallet address is ever sent to EquiRoute", async () => {
   const bodies: string[] = [];
   const client = new HttpEquiRouteClient({
-    config: { baseUrl: "http://equiroute.test", timeoutMs: 1000, headers: {}, source: "environment" },
+    config: { baseUrl: "http://equiroute.test", timeoutMs: 1000, headers: {}, source: "environment", quoteContextAddress: CANONICAL_QUOTE_CONTEXT_ADDRESS },
     fetchImpl: async (_url, init) => {
       bodies.push(init.body);
       return {
@@ -253,8 +253,9 @@ test("no wallet address is ever sent to EquiRoute", async () => {
     "notionalUsd",
     "slippagePercent",
     "ticker",
+    "userWalletAddress",
   ]);
-  assert.equal("userWalletAddress" in parsed, false);
+  assert.equal(parsed.userWalletAddress, CANONICAL_QUOTE_CONTEXT_ADDRESS);
 });
 
 // ── configuration ───────────────────────────────────────────────────────────
@@ -350,7 +351,7 @@ test("quote-context address validation accepts public addresses and rejects key-
     loadEquiRouteConfig({ EQUIROUTE_QUOTE_WALLET_ADDRESS: address }).quoteContextAddress,
     address,
   );
-  assert.equal(loadEquiRouteConfig({}).quoteContextAddress, null);
+  assert.equal(loadEquiRouteConfig({}).quoteContextAddress, CANONICAL_QUOTE_CONTEXT_ADDRESS);
   assert.throws(
     () => loadEquiRouteConfig({ EQUIROUTE_QUOTE_WALLET_ADDRESS: "not-an-address" }),
     /must be a 0x-prefixed 20-byte public EVM address/,
