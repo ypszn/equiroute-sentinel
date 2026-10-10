@@ -88,10 +88,8 @@ import {
 } from "./requestLimits.js";
 import type { RunWork } from "./sellerCore.js";
 import {
+  buildSentinelWorkHook,
   createSentinelRunner,
-  renderDeliverableText,
-  sentinelIntentFromPrompt,
-  watchFromPrompt,
   type SentinelRunner,
 } from "./sentinel/index.js";
 import { LLM_READ_TOOLS } from "./tools.js";
@@ -249,28 +247,9 @@ export function buildWorkSurface(): {
   const llm = buildRunWork();
   // The Sentinel reuses the same LLM hook, for guarded commentary only.
   const sentinel = createSentinelRunner({ model: llm });
-  const runWork: RunWork = async (prompt, opts) => {
-    const watch = watchFromPrompt(prompt);
-    if (watch !== null) {
-      const evaluated = await sentinel.evaluateWatch(watch);
-      return JSON.stringify({
-        kind: "equiroute_market_watch",
-        watch: evaluated.watch,
-        evaluation: evaluated.evaluation,
-        authorization: "none",
-        explanation: evaluated.explanation,
-      });
-    }
-    const request = sentinelIntentFromPrompt(prompt);
-    if (request !== null) {
-      const deliverable = await sentinel.analyze(request, {
-        sessionId: opts.sessionId,
-        ...(opts.abortSignal ? { abortSignal: opts.abortSignal } : {}),
-      });
-      return renderDeliverableText(deliverable);
-    }
-    return llm(prompt, opts);
-  };
+  // Optional-model failures (429 / outage / timeout) degrade to the
+  // deterministic report instead of losing a funded ERC-8183 delivery.
+  const runWork: RunWork = buildSentinelWorkHook({ llm, sentinel });
   return { runWork, sentinel };
 }
 

@@ -78,7 +78,12 @@ export interface SentinelRunner {
   evaluateWatch(
     request: unknown,
     opts?: { sessionId?: string; abortSignal?: AbortSignal },
-  ): Promise<{ watch: MarketWatch; evaluation: WatchEvaluation; explanation: string }>;
+  ): Promise<{
+    watch: MarketWatch;
+    evaluation: WatchEvaluation;
+    explanation: string;
+    commentaryStatus?: string;
+  }>;
 }
 
 /** Marker that separates the prose explanation from the machine-readable report. */
@@ -184,17 +189,33 @@ export function createSentinelRunner(
     });
 
     // 10 — deliverable.
-    return { report, explanation: explained.text };
+    return {
+      report,
+      explanation: explained.text,
+      commentaryStatus: explained.commentaryStatus,
+    };
   }
 
   async function evaluateWatch(
     request: unknown,
     opts: { sessionId?: string; abortSignal?: AbortSignal } = {},
-  ): Promise<{ watch: MarketWatch; evaluation: WatchEvaluation; explanation: string }> {
+  ): Promise<{
+    watch: MarketWatch;
+    evaluation: WatchEvaluation;
+    explanation: string;
+    commentaryStatus?: string;
+  }> {
     const watch = validateMarketWatch(request);
     const analysis = await analyze(watch, opts);
     const evaluation = evaluateWatchReport(watch, analysis.report);
-    return { watch, evaluation, explanation: `${analysis.explanation}\n\nMarket Watch matched: ${evaluation.matched}.` };
+    return {
+      watch,
+      evaluation,
+      explanation: `${analysis.explanation}\n\nMarket Watch matched: ${evaluation.matched}.`,
+      ...(analysis.commentaryStatus !== undefined
+        ? { commentaryStatus: analysis.commentaryStatus }
+        : {}),
+    };
   }
 
   return {

@@ -71,9 +71,17 @@ export {
 } from "./report.js";
 
 export {
+  buildSentinelWorkHook,
+  modelUnavailableDeliverable,
+  type LlmWorkHook,
+  type SentinelWorkHookOptions,
+} from "./delivery.js";
+
+export {
   MARKET_WATCH_SKILL,
   marketWatchFromPayload,
   SENTINEL_SKILL,
+  sentinelIntentFromJobText,
   sentinelIntentFromPayload,
   sentinelIntentFromPrompt,
   watchFromPrompt,

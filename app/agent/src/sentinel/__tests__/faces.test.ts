@@ -402,5 +402,9 @@ test("22. the Sentinel is fixed code, not an LLM-callable tool", () => {
   // The LLM tool set handed to generateText is unchanged.
   assert.match(dualMain, /tools: LLM_READ_TOOLS,/);
   // The Sentinel is composed in front of the LLM hook, not inside its tools.
-  assert.match(dualMain, /sentinelIntentFromPrompt\(prompt\)/);
+  assert.match(dualMain, /buildSentinelWorkHook\(\{ llm, sentinel \}\)/);
+  const delivery = readFileSync(new URL("../delivery.ts", import.meta.url), "utf-8");
+  assert.match(delivery, /sentinelIntentFromPrompt\(prompt\)/);
+  // The generic model call is the LAST resort and is failure-guarded.
+  assert.match(delivery, /return await llm\(prompt, opts\);/);
 });

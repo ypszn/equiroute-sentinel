@@ -365,4 +365,10 @@ export type SentinelReport = {
 export type SentinelDeliverable = {
   report: SentinelReport;
   explanation: string;
+  /**
+   * Why optional model commentary was accepted or omitted. Non-authoritative
+   * diagnostics only: the deterministic report and explanation are complete
+   * without it. `model_failed` means the provider was unavailable (e.g. 429).
+   */
+  commentaryStatus?: string;
 };

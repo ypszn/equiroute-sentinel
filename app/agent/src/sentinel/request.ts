@@ -96,6 +96,54 @@ export function marketWatchFromPayload(payload: unknown): Record<string, unknown
 }
 
 
+/**
+ * Deterministically recover a Sentinel intent from an ERC-8183 job's prose.
+ *
+ * Fixed code, no LLM. A negotiated ERC-8183 job carries the bounded
+ * `{deliverables, quality_standards}` terms shape, so a Sentinel job often
+ * states its request in text rather than as a structured payload. This
+ * recovers the request ONLY when the text names both a ticker and a notional
+ * explicitly; slippage is optional and falls back to EquiRoute's own default.
+ *
+ * It never guesses a missing financial parameter: without an explicit ticker
+ * AND notional it returns null, and the caller must not invent an analysis.
+ */
+export function sentinelIntentFromJobText(
+  text: string,
+): Record<string, unknown> | null {
+  if (typeof text !== "string" || text.trim() === "") return null;
+
+  const ticker =
+    /(?:"?ticker"?|\bsymbol\b|\bequity\b)\s*(?:[:=]|is)?\s*"?([A-Z][A-Z0-9.-]{0,11})"?/u.exec(
+      text,
+    )?.[1] ??
+    /\banalyz(?:e|ing)\s+(?:the\s+)?([A-Z][A-Z0-9.-]{0,11})\b/u.exec(text)?.[1] ??
+    null;
+  if (ticker === null) return null;
+
+  const notional =
+    /(?:"?notional(?:Usd)?"?)\s*(?:[:=]|is|of)?\s*"?\$?\s*(\d+(?:\.\d+)?)"?/iu.exec(
+      text,
+    )?.[1] ??
+    /\$\s*(\d+(?:\.\d+)?)/u.exec(text)?.[1] ??
+    null;
+  if (notional === null) return null;
+
+  const slippage =
+    /(?:"?slippage(?:Percent)?"?)\s*(?:[:=]|is|of)?\s*"?(\d+(?:\.\d+)?)"?/iu.exec(
+      text,
+    )?.[1] ??
+    /(\d+(?:\.\d+)?)\s*%\s*slippage/iu.exec(text)?.[1] ??
+    null;
+
+  return {
+    ticker,
+    notionalUsd: notional,
+    ...(slippage !== null ? { slippagePercent: slippage } : {}),
+  };
+}
+
+/** Scan a string for the first balanced JSON object and parse it. */
 function firstJsonObject(text: string): unknown | null {
   const start = text.indexOf("{");
   if (start === -1) return null;

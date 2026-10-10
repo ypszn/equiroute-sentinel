@@ -120,11 +120,11 @@ max_per_month_usd = 15.0
 [deploy.platform]
 terms_accepted_at = "2026-10-09T16:08:23Z"
 slug = "equiroutesentinel"
-deployment_id = "01M4GRPTCENPXVXFJDKYT6JHDA"
+deployment_id = "01M4H59FH2QR47R2T06J8S6HW5"
 backend = "aws"
 agent_id = "01M4GPS74PTF04C3PVDSMB0JKR"
 invoke_url = "https://bnbagent-api.bnbchain.world/v1/rt/01M4GPS74PTF04C3PVDSMB0JKR/.well-known/agent-card.json"
-last_deploy_at = "2026-10-09T16:42:46Z"
+last_deploy_at = "2026-10-09T20:22:40Z"
 
 [identity]
 endpoint = "https://bnbagent-api.bnbchain.world/v1/rt/01M4GPS74PTF04C3PVDSMB0JKR/.well-known/agent-card.json"
