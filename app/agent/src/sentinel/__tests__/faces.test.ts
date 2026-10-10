@@ -405,6 +405,7 @@ test("22. the Sentinel is fixed code, not an LLM-callable tool", () => {
   assert.match(dualMain, /buildSentinelWorkHook\(\{ llm, sentinel \}\)/);
   const delivery = readFileSync(new URL("../delivery.ts", import.meta.url), "utf-8");
   assert.match(delivery, /sentinelIntentFromPrompt\(prompt\)/);
-  // The generic model call is the LAST resort and is failure-guarded.
-  assert.match(delivery, /return await llm\(prompt, opts\);/);
+  // The generic model call is the LAST resort, is failure-guarded, and its
+  // output is sanitized before it can become a deliverable.
+  assert.match(delivery, /sanitizeDeliverableText\(await llm\(prompt, opts\)\)/);
 });

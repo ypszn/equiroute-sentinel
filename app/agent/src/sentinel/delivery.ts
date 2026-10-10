@@ -25,9 +25,12 @@
 import {
   sentinelIntentFromJobText,
   sentinelIntentFromPrompt,
+  sentinelJobRequestFromPrompt,
   watchFromPrompt,
 } from "./request.js";
 import { renderDeliverableText, type SentinelRunner } from "./runner.js";
+import { validateSentinelIntent } from "./intent.js";
+import { stripReasoning } from "./explain.js";
 
 /** The generic LLM work hook shape (matches the scaffold's `RunWork`). */
 export type LlmWorkHook = (
@@ -87,6 +90,42 @@ export function modelUnavailableDeliverable(
   );
 }
 
+export function sentinelUnavailableDeliverable(
+  prompt: string,
+  reason: string,
+): string {
+  return JSON.stringify(
+    {
+      kind: "equiroute_sentinel_delivery",
+      status: "unavailable",
+      authorization: "none",
+      requiresUserReviewInEquiRoute: true,
+      reason,
+      note:
+        "This job was identified as an EquiRoute Sentinel request, but its " +
+        "ticker and notional were not safely extractable. No generic model " +
+        "analysis was used and no financial result was inferred.",
+      jobContext: prompt.slice(0, 2000),
+    },
+    null,
+    2,
+  );
+}
+
+/**
+ * Final sanitizer applied to EVERY deliverable before upload/submission.
+ *
+ * Drops model scratchpad/chain-of-thought in all observed shapes: paired
+ * blocks, an unpaired close tag (everything before it was scratchpad), and an
+ * unpaired open tag (everything after it was scratchpad). Any residual tag is
+ * removed so no reasoning marker can reach the carrier.
+ */
+export function sanitizeDeliverableText(text: string): string {
+  const stripped = stripReasoning(text);
+  return stripped.replace(/<\/?think(?:ing)?>/giu, "").trim();
+}
+
+
 /**
  * Compose the Sentinel value layer in front of the generic LLM hook.
  *
@@ -124,7 +163,40 @@ export function buildSentinelWorkHook(
       });
     }
 
-    // 2 — structured Sentinel request, then deterministic prose recovery.
+    const job = sentinelJobRequestFromPrompt(prompt);
+    if (job.sentinelJob) {
+      if (job.intent === null) {
+        log.warn(
+          `job ${opts.sessionId}: Sentinel-labelled job lacks an explicit ticker/notional; ` +
+            "returning deterministic unavailable deliverable; generic LLM is disabled",
+        );
+        return sentinelUnavailableDeliverable(
+          prompt,
+          "Sentinel job requires an explicit ticker and USD notional.",
+        );
+      }
+      try {
+        const validated = validateSentinelIntent(job.intent);
+        const deliverable = await sentinel.analyze(validated, forward);
+        if (isModelUnavailable(deliverable.commentaryStatus)) {
+          log.warn(
+            `job ${opts.sessionId}: model commentary omitted (${deliverable.commentaryStatus}); ` +
+              "delivering the deterministic Sentinel report",
+          );
+        }
+        return sanitizeDeliverableText(renderDeliverableText(deliverable));
+      } catch (error) {
+        if (error instanceof Error && error.name === "SentinelInputError") {
+          log.warn(`job ${opts.sessionId}: Sentinel job input invalid; returning deterministic unavailable status`);
+          return sentinelUnavailableDeliverable(prompt, error.message);
+        }
+        // An EquiRoute failure is not a reason to fabricate an answer or to
+        // ask the LLM to invent financial data.
+        throw error;
+      }
+    }
+
+    // 2 — direct structured Sentinel request, then legacy prose recovery.
     const request =
       sentinelIntentFromPrompt(prompt) ?? sentinelIntentFromJobText(prompt);
     if (request !== null) {
@@ -135,12 +207,12 @@ export function buildSentinelWorkHook(
             "delivering the deterministic Sentinel report",
         );
       }
-      return renderDeliverableText(deliverable);
+      return sanitizeDeliverableText(renderDeliverableText(deliverable));
     }
 
     // 3 — generic work. A model failure must not lose a funded delivery.
     try {
-      return await llm(prompt, opts);
+      return sanitizeDeliverableText(await llm(prompt, opts));
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       log.warn(

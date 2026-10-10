@@ -40,6 +40,7 @@
 import { ERC8183JobOps } from "@bnbagent/sdk/erc8183";
 import { maskUrlSecrets } from "@bnbagent/studio-runtime/audit";
 import { SubmitPermanentlyUnsupportedError } from "@bnbagent/studio-runtime/erc8183";
+import { sanitizeDeliverableText } from "./sentinel/delivery.js";
 import { loadStudioToml } from "@bnbagent/studio-runtime/config";
 import { getWallet } from "@bnbagent/studio-runtime/wallet";
 import {
@@ -483,7 +484,7 @@ export class SellerCore {
 
     let res: { submitTx: string; deliverableUrl: string | null };
     try {
-      res = await this.signing.submitResult(jobId, work, {
+      res = await this.signing.submitResult(jobId, sanitizeDeliverableText(work), {
         job_id: jobId,
         generator: this.generator,
         built_with: "https://github.com/bnb-chain/bnbagent-studio",

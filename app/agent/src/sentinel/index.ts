@@ -73,6 +73,8 @@ export {
 export {
   buildSentinelWorkHook,
   modelUnavailableDeliverable,
+  sanitizeDeliverableText,
+  sentinelUnavailableDeliverable,
   type LlmWorkHook,
   type SentinelWorkHookOptions,
 } from "./delivery.js";
@@ -82,6 +84,7 @@ export {
   marketWatchFromPayload,
   SENTINEL_SKILL,
   sentinelIntentFromJobText,
+  sentinelJobRequestFromPrompt,
   sentinelIntentFromPayload,
   sentinelIntentFromPrompt,
   watchFromPrompt,

@@ -96,38 +96,73 @@ export function marketWatchFromPayload(payload: unknown): Record<string, unknown
 }
 
 
+/** Whether text clearly describes a Sentinel deliverable. */
+export function isSentinelJobText(text: string): boolean {
+  return /\bequiroute\s+(?:market\s+)?sentinel\b/iu.test(text) ||
+    /\bsentinel\s+(?:assessment|report|analysis|market-watch)\b/iu.test(text);
+}
+
 /**
- * Deterministically recover a Sentinel intent from an ERC-8183 job's prose.
+ * Extract an explicit ticker + USD notional from Sentinel job text.
  *
- * Fixed code, no LLM. A negotiated ERC-8183 job carries the bounded
- * `{deliverables, quality_standards}` terms shape, so a Sentinel job often
- * states its request in text rather than as a structured payload. This
- * recovers the request ONLY when the text names both a ticker and a notional
- * explicitly; slippage is optional and falls back to EquiRoute's own default.
+ * Two tiers, both fixed code:
+ *  1. Adjacency forms where the amount and symbol appear together
+ *     (`$10 NVDA`, `NVDA $10`, `$10 of NVDA`, `10 USD NVDA`,
+ *     `NVDA with a $10 notional`).
+ *  2. Independently labelled fields (`ticker: NVDA` … `notional of $10`).
  *
- * It never guesses a missing financial parameter: without an explicit ticker
- * AND notional it returns null, and the caller must not invent an analysis.
+ * Nothing is inferred: without BOTH an explicit symbol and an explicit USD
+ * amount this returns null and the caller must not invent an analysis.
  */
 export function sentinelIntentFromJobText(
   text: string,
 ): Record<string, unknown> | null {
   if (typeof text !== "string" || text.trim() === "") return null;
 
-  const ticker =
-    /(?:"?ticker"?|\bsymbol\b|\bequity\b)\s*(?:[:=]|is)?\s*"?([A-Z][A-Z0-9.-]{0,11})"?/u.exec(
-      text,
-    )?.[1] ??
-    /\banalyz(?:e|ing)\s+(?:the\s+)?([A-Z][A-Z0-9.-]{0,11})\b/u.exec(text)?.[1] ??
-    null;
-  if (ticker === null) return null;
+  /** [pattern, amountGroup, tickerGroup] */
+  const adjacency: Array<[RegExp, 1 | 2, 1 | 2]> = [
+    // "$10 NVDA", "$10 of NVDA", "a $10 NVDA tokenized-equity opportunity"
+    [/\$\s*(\d+(?:\.\d+)?)\s+(?:of\s+)?([A-Z][A-Z0-9.-]{0,11})\b/u, 1, 2],
+    // "NVDA $10", "NVDA with a $10 notional"
+    [
+      /\b([A-Z][A-Z0-9.-]{0,11})\s+(?:with\s+(?:a\s+)?)?\$\s*(\d+(?:\.\d+)?)\b/u,
+      2,
+      1,
+    ],
+    // "10 USD NVDA", "10 USD of NVDA"
+    [/\b(\d+(?:\.\d+)?)\s*USD\s+(?:of\s+)?([A-Z][A-Z0-9.-]{0,11})\b/iu, 1, 2],
+  ];
 
-  const notional =
+  let ticker: string | null = null;
+  let notional: string | null = null;
+
+  for (const [pattern, amountGroup, tickerGroup] of adjacency) {
+    const match = pattern.exec(text);
+    if (!match) continue;
+    const candidateTicker = match[tickerGroup];
+    const candidateAmount = match[amountGroup];
+    if (candidateTicker === undefined || candidateAmount === undefined) continue;
+    // Reject prose words that merely look symbol-shaped in a case-insensitive
+    // match (e.g. "USD" itself); require an uppercase symbol.
+    if (!/^[A-Z][A-Z0-9.-]*$/u.test(candidateTicker)) continue;
+    ticker = candidateTicker;
+    notional = candidateAmount;
+    break;
+  }
+
+  // Tier 2 — independently labelled fields.
+  ticker ??=
+    /(?:"?ticker"?|"?symbol"?)\s*(?:[:=]|is)?\s*"?([A-Z][A-Z0-9.-]{0,11})"?/u.exec(
+      text,
+    )?.[1] ?? null;
+  notional ??=
     /(?:"?notional(?:Usd)?"?)\s*(?:[:=]|is|of)?\s*"?\$?\s*(\d+(?:\.\d+)?)"?/iu.exec(
       text,
     )?.[1] ??
     /\$\s*(\d+(?:\.\d+)?)/u.exec(text)?.[1] ??
     null;
-  if (notional === null) return null;
+
+  if (ticker === null || notional === null) return null;
 
   const slippage =
     /(?:"?slippage(?:Percent)?"?)\s*(?:[:=]|is|of)?\s*"?(\d+(?:\.\d+)?)"?/iu.exec(
@@ -137,9 +172,40 @@ export function sentinelIntentFromJobText(
     null;
 
   return {
-    ticker,
+    ticker: ticker.toUpperCase(),
     notionalUsd: notional,
     ...(slippage !== null ? { slippagePercent: slippage } : {}),
+  };
+}
+
+/** Extract structured fields from task and terms strings, preferring explicit data. */
+export function sentinelJobRequestFromPrompt(
+  prompt: string,
+): { sentinelJob: boolean; intent: Record<string, unknown> | null } {
+  const direct = firstJsonObject(prompt);
+  const task: string[] = [];
+  const termTexts: string[] = [];
+  if (isRecord(direct)) {
+    if (typeof direct.task === "string") task.push(direct.task);
+    if (typeof direct.task_description === "string") task.push(direct.task_description);
+    if (typeof direct.terms === "string") termTexts.push(direct.terms);
+    if (isRecord(direct.terms)) {
+      for (const value of Object.values(direct.terms)) {
+        if (typeof value === "string") termTexts.push(value);
+      }
+    }
+  }
+  const bodyText = [...task, ...termTexts].join("\n");
+  const sentinelJob = isSentinelJobText(bodyText || prompt);
+  if (!sentinelJob) return { sentinelJob: false, intent: null };
+
+  const combined = [...task, ...termTexts].join("\n");
+  return {
+    sentinelJob: true,
+    intent:
+      sentinelIntentFromPayload(direct) ??
+      sentinelIntentFromJobText(combined) ??
+      sentinelIntentFromJobText(prompt),
   };
 }
 
