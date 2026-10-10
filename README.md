@@ -72,12 +72,14 @@ Decimal thresholds are compared as decimal strings without binary floating-point
   "slippagePercent": "0.5",
   "conditions": {
     "providerAvailability": {
-      "provider": "xstock",
+      "provider": "bstock",
       "required": true
     }
   }
 }
 ```
+
+![Sentinel market watch](docs/images/sentinel-market-watch.png)
 
 This watch is evaluated on each invocation. If xStock has no executable liquidity at that time, the deterministic condition is false and the upstream reason is preserved.
 
@@ -91,6 +93,8 @@ requiresUserReviewInEquiRoute: true
 ## Agent Interfaces
 
 ### A2A
+
+![Agent Card](docs/images/sentinel-agent-card.png)
 
 The AgentCard advertises:
 
@@ -162,6 +166,8 @@ Sentinel defaults to the canonical public EquiRoute deployment used by the hacka
 https://equiroute-lime.vercel.app
 ```
 
+[Equiroute Repository](https://github.com/ypszn/equiroute)
+
 `EQUIROUTE_BASE_URL` remains a runtime override when a different trusted EquiRoute deployment is required:
 
 ```text
@@ -185,6 +191,8 @@ The health/readiness helper validates configuration without issuing a market-rou
 
 ## BNB Agent Studio Integration
 
+![Agent Studio](docs/images/sentinel-agent-studio.png)
+
 Current workspace configuration (`app/agent/studio.toml`):
 
 - Runtime: AgentCore
@@ -196,8 +204,6 @@ Current workspace configuration (`app/agent/studio.toml`):
 - Seller pricing: FREE (`price_usd = "0"`)
 - Auto-topup: disabled
 - Deliverable storage: local for development; managed platform storage is used for the managed deployment target
-
-The encrypted keystore and local secret environment file under `.studio/` are local-only and ignored by Git. Do not commit them. Studio sends wallet material only through its documented runtime-secret channel as part of an explicitly authorized deployment; it is never included in this README or the source artifact.
 
 ## Local Development
 
@@ -226,7 +232,7 @@ pnpm build
 
 ## Environment Variables
 
-Configure values locally in the ignored Studio secret environment file or through Studio’s documented managed runtime configuration. Never commit that file.
+Configure values locally in the ignored Studio secret environment file or through Studio’s documented managed runtime configuration.
 
 | Variable | Purpose | Secret? |
 |---|---|---:|
@@ -236,8 +242,6 @@ Configure values locally in the ignored Studio secret environment file or throug
 | `EQUIROUTE_API_TOKEN` | Optional future API token seam; not currently required | Yes, if configured |
 | `wallet unlock password` | Local encrypted Studio keystore unlock | Yes; never publish |
 | `PIEVERSE_LLM_API_KEY` | Studio/Pieverse runtime credential | Yes; never publish |
-
-Do not include wallet passwords, keystore contents, API keys, B402 credentials, or private keys in examples, source, screenshots, logs, or commits.
 
 ## Testing
 
@@ -253,7 +257,7 @@ git diff --check
 
 The tests cover EquiRoute HTTP resilience/schema validation, deterministic route/report preservation, MarketWatch condition matching and decimal-safe comparisons, A2A and MCP surfaces, execution-boundary blocklists, LLM commentary safeguards, wallet/signing boundaries, and zero-price x402 behavior.
 
-## Deployment (not performed)
+## Deployment
 
 The intended BNB managed-platform preparation/deployment flow is:
 
@@ -264,20 +268,35 @@ bag deploy status
 bag deploy verify --provider bnb
 ```
 
-**This repository has not been deployed by this documentation pass.** The BNB managed-platform trial is time-limited; its 48-hour clock starts on the first successful `bag deploy --provider bnb`. Read the current BNB Agent Studio guidance and review all readiness warnings before any deployment. A public HTTPS EquiRoute URL must be configured before deploying the Sentinel.
+The BNB managed-platform trial is time-limited; its 48-hour clock starts on the first successful `bag deploy --provider bnb`. Read the current BNB Agent Studio guidance and review all readiness warnings before any deployment. A public HTTPS EquiRoute URL must be configured before deploying the Sentinel.
 
-## Screenshots
+```
+Deployed Sentinel Agent ID: 01M4GPS74PTF04C3PVDSMB0JKR
+ERC-8004 Agent ID: 2582
+```
 
-Screenshot slots are reserved under [`docs/images/`](docs/images/README.md). No screenshots are included yet; add authentic captures of local analysis, MarketWatch output, A2A/MCP proof, and deployed Agent Studio status only when those states have actually been observed. Never include secrets or wallet material in captures.
+## ERC-8183 Agent Commerce
 
-## Main EquiRoute Repository
+EquiRoute Sentinel has completed an end-to-end ERC-8183 job on BSC testnet.
 
-TODO: add the verified public URL for the main EquiRoute repository. No repository URL was configured in this workspace, so one is intentionally not guessed.
+- Job ID: `1423`
+- State: `SUBMITTED`
+- Budget: `0 U`
+- Buyer and provider use separate wallets
+- Signed negotiation envelope
+- Deterministic Sentinel analysis delivered
+- Deliverable committed on-chain
+- No transaction execution authority granted
 
-## Security and Disclaimer
+![ERC-8183 submitted job](docs/images/sentinel-erc8183-submitted.png)
+
+![ERC-8183 fetch job](docs/images/sentinel-live-analysis.png)
+
+
+## Disclaimer
 
 Hackathon/research software; provided for demonstration and testing. It is not financial advice and does not trade automatically. MarketWatch matches are informational observations, not trade signals or execution approvals. Real execution remains behind separate user review and security controls in EquiRoute. Never expose wallet secrets or use a funded/mainnet wallet for local experiments.
 
 ## License
 
-No license file or license metadata is present in this repository. All rights remain with the respective authors; reuse and redistribution permissions have not been specified.
+This project is licensed under the MIT License. See [LICENSE](LICENSE).

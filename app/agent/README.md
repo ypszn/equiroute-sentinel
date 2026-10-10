@@ -30,4 +30,4 @@ pnpm typecheck
 pnpm build
 ```
 
-Sentinel analysis and MarketWatch evaluation are read-only and do not call Binance Agentic Wallet, `/api/prepare`, or trading/signing endpoints. The encrypted Studio keystore and local secret environment file remain at the workspace root under `.studio/` and must never be committed.
+Sentinel analysis and MarketWatch evaluation are read-only and do not call Binance Agentic Wallet, `/api/prepare`, or trading/signing endpoints.
